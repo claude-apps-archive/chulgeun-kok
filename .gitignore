@@ -7,3 +7,6 @@ local.properties
 *.keystore
 *.jks
 chulgeunkok.apk
+xcuserdata/
+DerivedData/
+*.xcuserstate

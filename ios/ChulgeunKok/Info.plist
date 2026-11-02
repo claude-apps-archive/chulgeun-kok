@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>직장 위치를 정하고, 직장에 도착하거나 떠난 시간을 기록하는 데 사용해요.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>앱을 닫아 두어도 직장에 도착·출발한 것을 감지해 출퇴근 시간을 자동으로 기록하려면 '항상 허용'이 필요해요.</string>
+</dict>
+</plist>

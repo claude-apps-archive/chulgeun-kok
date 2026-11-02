@@ -1,0 +1,28 @@
+name: 출근콕 iOS 빌드 확인
+
+# 아이폰 앱이 컴파일되는지만 확인한다 (서명 없이 시뮬레이터용 빌드).
+# 실제 아이폰 설치는 맥의 Xcode 에서 한다. ios/README.md 참고
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build for simulator
+        run: |
+          xcodebuild -version
+          xcodebuild \
+            -project ios/ChulgeunKok.xcodeproj \
+            -target ChulgeunKok \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            CODE_SIGNING_ALLOWED=NO \
+            build
