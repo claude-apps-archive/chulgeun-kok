@@ -1,0 +1,79 @@
+name: 출근콕 APK 빌드
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # 선택: 저장소 Secrets 에 SIGNING_KEYSTORE_BASE64 등을 넣어 두면 매번 같은 키로 서명되어
+      # 앱을 지우지 않고 업데이트 설치할 수 있다.
+      - name: Prepare signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          RAW_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          RAW_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          RAW_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            # 붙여넣을 때 섞인 줄바꿈·공백은 무시한다
+            clean=$(printf '%s' "$KEYSTORE_B64" | tr -d ' \t\r\n')
+            if ! printf '%s' "$clean" | base64 -d > "$RUNNER_TEMP/release.keystore"; then
+              echo "::error::SIGNING_KEYSTORE_BASE64 값이 올바르지 않아요. 공백을 뺀 길이 ${#clean}자 (정상이면 A-Z, a-z, 0-9, +, /, = 로만 된 긴 한 줄). 처음부터 끝까지 다시 복사해 넣어 주세요."
+              exit 1
+            fi
+            # 비밀번호·별칭은 영문과 숫자만 쓴다. 함께 붙여넣어진 "값:" 같은 글자나 공백은 걸러낸다
+            store_pw=$(printf '%s' "$RAW_STORE_PASSWORD" | tr -cd 'A-Za-z0-9')
+            key_alias=$(printf '%s' "$RAW_KEY_ALIAS" | tr -cd 'A-Za-z0-9')
+            key_pw=$(printf '%s' "$RAW_KEY_PASSWORD" | tr -cd 'A-Za-z0-9')
+            echo "::add-mask::$store_pw"
+            echo "::add-mask::$key_pw"
+            if ! keytool -list -keystore "$RUNNER_TEMP/release.keystore" -storepass "$store_pw" -alias "$key_alias" > /dev/null 2>&1; then
+              echo "::error::서명 키를 열 수 없어요. SIGNING_STORE_PASSWORD(걸러낸 길이 ${#store_pw}자, 정상 24자) 또는 SIGNING_KEY_ALIAS(걸러낸 값 길이 ${#key_alias}자, 정상 11자)를 다시 확인해 주세요."
+              exit 1
+            fi
+            {
+              echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore"
+              echo "SIGNING_STORE_PASSWORD=$store_pw"
+              echo "SIGNING_KEY_ALIAS=$key_alias"
+              echo "SIGNING_KEY_PASSWORD=$key_pw"
+            } >> "$GITHUB_ENV"
+          fi
+
+      - name: Build APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --stacktrace
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/release/app-release.apk chulgeunkok.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chulgeunkok-apk
+          path: chulgeunkok.apk
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete apk-latest --yes --cleanup-tag || true
+          gh release create apk-latest chulgeunkok.apk \
+            --target "${{ github.sha }}" \
+            --title "출근콕 APK (최신)" \
+            --notes "휴대폰에서 chulgeunkok.apk 를 눌러 다운로드한 뒤 설치하세요. 빌드 커밋: ${{ github.sha }}"
