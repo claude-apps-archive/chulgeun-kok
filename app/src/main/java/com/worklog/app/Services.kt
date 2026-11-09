@@ -21,6 +21,10 @@ import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import org.json.JSONArray
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 import java.time.LocalDate
 import java.util.Locale
 
@@ -43,7 +47,8 @@ object Perms {
 
 // ---------- 위치 / 지오펜스 ----------
 
-data class GeoHit(val label: String, val lat: Double, val lng: Double)
+/** name 은 장소 이름(직장 이름 자동 채우기용), label 은 목록에 보여 줄 전체 주소 */
+data class GeoHit(val label: String, val lat: Double, val lng: Double, val name: String = "")
 
 object Geo {
     private fun pi(ctx: Context): PendingIntent = PendingIntent.getBroadcast(
@@ -87,12 +92,41 @@ object Geo {
     }
 
     @Suppress("DEPRECATION")
-    fun search(ctx: Context, q: String): List<GeoHit> = try {
+    private fun geocoder(ctx: Context, q: String): List<GeoHit> = try {
         Geocoder(ctx, Locale.KOREA).getFromLocationName(q, 5)
-            ?.map { GeoHit(it.getAddressLine(0) ?: q, it.latitude, it.longitude) }
+            ?.map { GeoHit(it.getAddressLine(0) ?: q, it.latitude, it.longitude, it.featureName ?: "") }
             ?: emptyList()
     } catch (_: Exception) {
         emptyList()
+    }
+
+    /** OpenStreetMap 장소 검색. 휴대폰 기본 주소 검색이 못 찾는 가게·호텔 이름도 찾는다 */
+    private fun nominatim(q: String, koreaOnly: Boolean): List<GeoHit> = try {
+        val url = URL(
+            "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&accept-language=ko" +
+                (if (koreaOnly) "&countrycodes=kr" else "") +
+                "&q=" + URLEncoder.encode(q, "UTF-8")
+        )
+        val conn = url.openConnection() as HttpURLConnection
+        conn.setRequestProperty("User-Agent", "Chulgeunkok/1.3 (Android attendance app)")
+        conn.connectTimeout = 8000
+        conn.readTimeout = 8000
+        val body = conn.inputStream.bufferedReader().use { it.readText() }
+        val arr = JSONArray(body)
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            GeoHit(o.optString("display_name"), o.getString("lat").toDouble(), o.getString("lon").toDouble(), o.optString("name"))
+        }
+    } catch (_: Exception) {
+        emptyList()
+    }
+
+    /** 기본 주소 검색 + OpenStreetMap 검색을 합친다. 네트워크를 쓰므로 IO 스레드에서 부른다 */
+    fun search(ctx: Context, q: String): List<GeoHit> {
+        val osm = nominatim(q, koreaOnly = true).ifEmpty { nominatim(q, koreaOnly = false) }
+        return (geocoder(ctx, q) + osm)
+            .distinctBy { "%.4f,%.4f".format(Locale.US, it.lat, it.lng) }
+            .take(10)
     }
 }
 

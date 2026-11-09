@@ -10,6 +10,8 @@ struct GeoHit: Identifiable {
     let label: String
     let lat: Double
     let lng: Double
+    /// 장소 이름 (직장 이름 자동 채우기용)
+    var name = ""
 }
 
 /// iOS 의 지역 모니터링(지오펜스)은 앱이 꺼져 있어도 반경을 드나들 때 앱을 깨워 준다
@@ -54,15 +56,18 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         manager.requestLocation()
     }
 
-    func search(_ q: String, _ cb: @escaping ([GeoHit]) -> Void) {
+    /// 장소 이름·주소 검색. near 를 주면 그 주변 결과를 먼저 찾는다
+    func search(_ q: String, near: MKCoordinateRegion? = nil, _ cb: @escaping ([GeoHit]) -> Void) {
         let req = MKLocalSearch.Request()
         req.naturalLanguageQuery = q
+        if let near { req.region = near }
         MKLocalSearch(request: req).start { resp, _ in
-            let hits = (resp?.mapItems ?? []).prefix(6).map { item in
+            let hits = (resp?.mapItems ?? []).prefix(10).map { item in
                 GeoHit(
-                    label: [item.name, item.placemark.title].compactMap { $0 }.joined(separator: " · "),
+                    label: item.placemark.title ?? (item.name ?? q),
                     lat: item.placemark.coordinate.latitude,
-                    lng: item.placemark.coordinate.longitude
+                    lng: item.placemark.coordinate.longitude,
+                    name: item.name ?? ""
                 )
             }
             DispatchQueue.main.async { cb(Array(hits)) }

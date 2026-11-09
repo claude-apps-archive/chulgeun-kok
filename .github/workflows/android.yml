@@ -6,6 +6,10 @@ on:
     paths-ignore:
       - "ios/**"
       - ".github/workflows/ios.yml"
+  pull_request:
+    paths-ignore:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
   workflow_dispatch:
 
 permissions:
@@ -71,7 +75,9 @@ jobs:
           name: chulgeunkok-apk
           path: chulgeunkok.apk
 
+      # PR 에서는 빌드 확인만 하고, main 에 합쳐질 때만 다운로드 링크의 APK 를 바꾼다
       - name: Publish release
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

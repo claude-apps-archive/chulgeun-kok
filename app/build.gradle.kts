@@ -12,8 +12,8 @@ android {
         applicationId = "com.worklog.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
     }
 
     // 서명 키는 저장소에 넣지 않는다. CI 에서 SIGNING_* 환경변수(GitHub Secrets)가 있으면 그 키로,
@@ -63,4 +63,5 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 }

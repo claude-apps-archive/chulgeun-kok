@@ -20,6 +20,7 @@
 		B1000000000000000000000A /* PayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* PayView.swift */; };
 		B1000000000000000000000B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000B /* SettingsView.swift */; };
 		B10000000000000000000100 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000100 /* Assets.xcassets */; };
+		B1000000000000000000000C /* MapPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000C /* MapPickerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		A10000000000000000000100 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000101 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000102 /* ChulgeunKok.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChulgeunKok.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1000000000000000000000C /* MapPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapPickerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,6 +76,7 @@
 				A10000000000000000000009 /* CalendarView.swift */,
 				A1000000000000000000000A /* PayView.swift */,
 				A1000000000000000000000B /* SettingsView.swift */,
+				A1000000000000000000000C /* MapPickerView.swift */,
 				A10000000000000000000100 /* Assets.xcassets */,
 				A10000000000000000000101 /* Info.plist */,
 			);
@@ -169,6 +172,7 @@
 				B10000000000000000000009 /* CalendarView.swift in Sources */,
 				B1000000000000000000000A /* PayView.swift in Sources */,
 				B1000000000000000000000B /* SettingsView.swift in Sources */,
+				B1000000000000000000000C /* MapPickerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
