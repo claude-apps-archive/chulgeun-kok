@@ -108,8 +108,8 @@ struct PlaceEditor: View {
     @State private var w: Workplace
     @State private var wageText: String
     @State private var newDate = Date()
-    @State private var query = ""
-    @State private var hits: [GeoHit] = []
+    @State private var showMap = false
+    @State private var showCoords = false
     @State private var coordText = ""
     @State private var locating = false
     @State private var message: String?
@@ -275,6 +275,13 @@ struct PlaceEditor: View {
             .sheet(item: Binding(get: { calc.map { CalcSheetItem(input: $0) } }, set: { calc = $0?.input })) {
                 CalcSheet(input: $0.input, rates: store.data.rates)
             }
+            .sheet(isPresented: $showMap) {
+                MapPickerView(lat: w.lat, lng: w.lng, radius: w.radius) { lat, lng, place in
+                    w.lat = lat
+                    w.lng = lng
+                    if w.name.trimmingCharacters(in: .whitespaces).isEmpty, let place { w.name = place }
+                }
+            }
             .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("확인", role: .cancel) {}
             }
@@ -294,41 +301,31 @@ struct PlaceEditor: View {
         VStack(alignment: .leading, spacing: 8) {
             FieldLabel(text: "직장 위치")
             if let lat = w.lat, let lng = w.lng {
-                Text(String(format: "위도 %.5f, 경도 %.5f", lat, lng)).font(.system(size: 14)).foregroundColor(Palette.ink)
+                Text(String(format: "위치가 정해졌어요 (위도 %.5f, 경도 %.5f)", lat, lng))
+                    .font(.system(size: 14)).foregroundColor(Palette.ink)
             } else {
                 Text("아직 위치가 설정되지 않았어요").font(.system(size: 14)).foregroundColor(Palette.coral)
             }
+            PrimaryButton(title: w.hasLocation ? "지도에서 위치 바꾸기" : "지도에서 위치 고르기") { showMap = true }
             SoftButton(title: locating ? "위치 찾는 중..." : "지금 있는 곳을 직장으로") { useCurrentLocation() }
-            HStack(spacing: 8) {
-                TextField("주소나 장소 이름으로 찾기", text: $query).fieldStyle().submitLabel(.search).onSubmit { search() }
-                SoftButton(title: "검색") { search() }
-            }
-            ForEach(hits) { h in
-                Button {
-                    w.lat = h.lat
-                    w.lng = h.lng
-                    hits = []
-                } label: {
-                    Text(h.label).font(.system(size: 14)).foregroundColor(Palette.ink)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.plain)
-                Divider()
-            }
-            HStack(spacing: 8) {
-                TextField("좌표 직접 입력 (37.5665, 126.9780)", text: $coordText).fieldStyle()
-                SoftButton(title: "적용") {
-                    let p = coordText.split(whereSeparator: { $0 == "," || $0 == " " }).compactMap { Double($0) }
-                    if p.count >= 2 {
-                        w.lat = p[0]
-                        w.lng = p[1]
-                    } else {
-                        message = "예: 37.5665, 126.9780 형식으로 입력해 주세요"
+            Text("지도에서 장소 이름을 검색하거나, 지도를 움직여 핀을 직장에 맞추면 돼요")
+                .font(.system(size: 12)).foregroundColor(Palette.sub)
+            Button(showCoords ? "좌표 직접 입력 닫기" : "좌표 직접 입력") { showCoords.toggle() }
+                .font(.system(size: 12)).foregroundColor(Palette.purple)
+            if showCoords {
+                HStack(spacing: 8) {
+                    TextField("37.5665, 126.9780", text: $coordText).fieldStyle()
+                    SoftButton(title: "적용") {
+                        let p = coordText.split(whereSeparator: { $0 == "," || $0 == " " }).compactMap { Double($0) }
+                        if p.count >= 2 {
+                            w.lat = p[0]
+                            w.lng = p[1]
+                        } else {
+                            message = "예: 37.5665, 126.9780 형식으로 입력해 주세요"
+                        }
                     }
                 }
             }
-            Text("지도 앱에서 장소를 길게 눌러 좌표를 복사할 수 있어요").font(.system(size: 12)).foregroundColor(Palette.sub)
         }
     }
 
@@ -382,15 +379,6 @@ struct PlaceEditor: View {
             } else {
                 message = "위치를 가져오지 못했어요. 잠시 뒤 다시 시도해 주세요"
             }
-        }
-    }
-
-    private func search() {
-        let q = query.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return }
-        location.search(q) { found in
-            hits = found
-            if found.isEmpty { message = "검색 결과가 없어요" }
         }
     }
 

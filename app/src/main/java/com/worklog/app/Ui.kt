@@ -877,13 +877,12 @@ fun DeleteDialog(wp: Workplace, onDismiss: () -> Unit, onConfirm: () -> Unit) {
 @Composable
 fun PlaceEditor(initial: Workplace, data: AppData, onClose: () -> Unit, onCalc: (CalcInput) -> Unit) {
     val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
     val isNew = data.wp(initial.id) == null
     var w by remember(initial.id) { mutableStateOf(initial) }
     var wageText by remember(initial.id) { mutableStateOf(initial.wage.toString()) }
-    var query by remember { mutableStateOf("") }
-    var hits by remember { mutableStateOf<List<GeoHit>>(emptyList()) }
     var coordText by remember { mutableStateOf("") }
+    var showCoords by remember { mutableStateOf(false) }
+    var showMap by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var locating by remember { mutableStateOf(false) }
 
@@ -1017,9 +1016,13 @@ fun PlaceEditor(initial: Workplace, data: AppData, onClose: () -> Unit, onCalc: 
 
             Label("직장 위치")
             Text(
-                if (w.hasLocation) "위도 %.5f, 경도 %.5f".format(w.lat, w.lng) else "아직 위치가 설정되지 않았어요",
+                if (w.hasLocation) "위치가 정해졌어요 (위도 %.5f, 경도 %.5f)".format(w.lat, w.lng) else "아직 위치가 설정되지 않았어요",
                 fontSize = 14.sp, color = if (w.hasLocation) Ink else Coral,
             )
+            Spacer(Modifier.height(8.dp))
+            PrimaryButton(if (w.hasLocation) "지도에서 위치 바꾸기" else "지도에서 위치 고르기", Modifier.fillMaxWidth()) {
+                showMap = true
+            }
             Spacer(Modifier.height(8.dp))
             SoftButton(if (locating) "위치 찾는 중..." else "지금 있는 곳을 직장으로", Modifier.fillMaxWidth()) {
                 if (!Perms.location(ctx)) {
@@ -1032,45 +1035,26 @@ fun PlaceEditor(initial: Workplace, data: AppData, onClose: () -> Unit, onCalc: 
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Field(query, { query = it }, "주소나 장소 이름으로 찾기", Modifier.weight(1f))
-                Spacer(Modifier.width(8.dp))
-                SoftButton("검색") {
-                    val q = query.trim()
-                    if (q.isNotEmpty()) scope.launch {
-                        hits = withContext(Dispatchers.IO) { Geo.search(ctx, q) }
-                        if (hits.isEmpty()) toast(ctx, "검색 결과가 없어요")
+            Text(
+                "지도에서 장소 이름을 검색하거나, 지도를 움직여 핀을 직장에 맞추면 돼요",
+                fontSize = 12.sp, color = Sub, modifier = Modifier.padding(top = 6.dp),
+            )
+            Text(
+                if (showCoords) "좌표 직접 입력 닫기" else "좌표 직접 입력",
+                fontSize = 12.sp, color = Purple,
+                modifier = Modifier.padding(top = 8.dp).clickable { showCoords = !showCoords },
+            )
+            if (showCoords) {
+                Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Field(coordText, { coordText = it }, "37.5665, 126.9780", Modifier.weight(1f))
+                    Spacer(Modifier.width(8.dp))
+                    SoftButton("적용") {
+                        val p = coordText.split(",", " ").mapNotNull { it.trim().toDoubleOrNull() }
+                        if (p.size >= 2) w = w.copy(lat = p[0], lng = p[1]) else toast(ctx, "예: 37.5665, 126.9780 형식으로 입력해 주세요")
                     }
                 }
             }
-            hits.forEach { h ->
-                Text(
-                    h.label,
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            w = w.copy(lat = h.lat, lng = h.lng)
-                            hits = emptyList()
-                        }
-                        .padding(vertical = 10.dp, horizontal = 4.dp),
-                    fontSize = 14.sp, color = Ink,
-                )
-                HorizontalDivider(color = Line)
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Field(coordText, { coordText = it }, "좌표 직접 입력 (37.5665, 126.9780)", Modifier.weight(1f))
-                Spacer(Modifier.width(8.dp))
-                SoftButton("적용") {
-                    val p = coordText.split(",", " ").mapNotNull { it.trim().toDoubleOrNull() }
-                    if (p.size >= 2) w = w.copy(lat = p[0], lng = p[1]) else toast(ctx, "예: 37.5665, 126.9780 형식으로 입력해 주세요")
-                }
-            }
-            Text(
-                "구글 지도에서 장소를 길게 누르면 좌표를 복사할 수 있어요",
-                fontSize = 12.sp, color = Sub, modifier = Modifier.padding(top = 6.dp),
-            )
 
             Label("감지 반경 ${w.radius}m")
             Slider(
@@ -1111,6 +1095,13 @@ fun PlaceEditor(initial: Workplace, data: AppData, onClose: () -> Unit, onCalc: 
                 }
             }
             Spacer(Modifier.height(32.dp))
+        }
+    }
+
+    if (showMap) {
+        MapPickerDialog(w.lat, w.lng, w.radius, onDismiss = { showMap = false }) { lat, lng, place ->
+            w = w.copy(lat = lat, lng = lng, name = if (w.name.isBlank() && place != null) place else w.name)
+            showMap = false
         }
     }
 
